@@ -1,151 +1,130 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { useAppDispatch, useAppSelector } from '@/lib/hooks';
+import { fetchProduct, clearCurrentProduct } from '@/lib/features/products/productsSlice';
 
-// Extended product details for display
-const productDetails: Record<string, any> = {
-  '1': {
-    image: '/products/mic.jpg',
-    description: 'High-quality microphone for professional recording',
-    features: [
-      'High-quality audio recording',
-      'Noise cancellation technology',
-      'USB connectivity',
-      'Compatible with all devices',
-    ],
-  },
-  '2': {
-    image: '/products/roll.jpg',
-    description: 'Durable and high-quality roll product for various uses',
-    features: [
-      'Durable material construction',
-      'Easy to use interface',
-      'Compact and portable design',
-      'Long-lasting performance',
-    ],
-  },
-  '3': {
-    image: '/products/tail.jpg',
-    description: 'Premium tail product with elegant design',
-    features: [
-      'Premium quality materials',
-      'Ergonomic design',
-      'Multiple color options',
-      'Satisfaction guaranteed',
-    ],
-  },
-};
+export default function ProductDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { currentProduct: product, loading, error } = useAppSelector((state) => state.products);
 
-async function getProduct(id: string) {
-  try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/products/${id}`, {
-      cache: 'no-store'
-    });
-    
-    if (!res.ok) {
-      return null;
+  useEffect(() => {
+    if (params.id) {
+      dispatch(fetchProduct(params.id as string));
     }
     
-    return res.json();
-  } catch (error) {
-    console.error('Error fetching product:', error);
-    return null;
-  }
-}
+    return () => {
+      dispatch(clearCurrentProduct());
+    };
+  }, [dispatch, params.id]);
 
-export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const product = await getProduct(id);
-
-  // If product doesn't exist in API, show 404
-  if (!product) {
-    notFound();
-  }
-
-  const details = productDetails[id];
-
-  return (
-    <main className="min-h-screen p-4 bg-gray-50">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <Link 
-            href="/products" 
-            className="text-purple-600 hover:text-purple-800 font-medium flex items-center gap-2 transition-colors"
-          >
-            ← Back to Products
-          </Link>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="md:flex">
-            {/* Product Image */}
-            <div className="md:w-1/2">
-              <div className="relative h-64 md:h-96">
-                <Image
-                  src={details?.image || '/products/default.jpg'}
-                  alt={product.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            </div>
-
-            {/* Product Info */}
-            <div className="md:w-1/2 p-8">
-              <h1 className="text-3xl font-bold mb-4 text-gray-800">{product.name}</h1>
-              <p className="text-2xl font-bold text-purple-600 mb-6">{product.price}</p>
-              
-              <div className="mb-6">
-                <p className="text-gray-700 leading-relaxed">
-                  {details?.description || 'No description available for this product.'}
-                </p>
-              </div>
-
-              {details?.features && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3 text-gray-800">Features:</h3>
-                  <ul className="space-y-2">
-                    {details.features.map((feature: string, index: number) => (
-                      <li key={index} className="flex items-center gap-2 text-gray-700">
-                        <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link 
-                  href="/products"
-                  className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors text-center font-medium"
-                >
-                  Back to Products
-                </Link>
-                <Link 
-                  href="/admin"
-                  className="bg-purple-500 text-white px-6 py-3 rounded-lg hover:bg-purple-600 transition-colors text-center font-medium"
-                >
-                  Go to Admin
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Additional Info */}
-        <div className="mt-8 bg-blue-50 p-6 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2 text-gray-800">Product Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-            <div>
-              <strong>Product ID:</strong> {product.id}
-            </div>
-            <div>
-              <strong>Price:</strong> {product.price}
-            </div>
-          </div>
+  if (loading) {
+    return (
+      <div className='container mx-auto px-4 py-8'>
+        <div className='flex justify-center items-center h-64'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500'></div>
         </div>
       </div>
-    </main>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className='container mx-auto px-4 py-8'>
+        <div className='bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4'>
+          {error || 'Product not found'}
+        </div>
+        <Link
+          href='/products'
+          className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
+        >
+          Back to Products
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className='container mx-auto px-4 py-8'>
+      <div className='mb-6'>
+        <Link
+          href='/products'
+          className='text-blue-500 hover:text-blue-600 flex items-center gap-2'
+        >
+          <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+            <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M15 19l-7-7 7-7' />
+          </svg>
+          Back to Products
+        </Link>
+      </div>
+
+      <div className='grid md:grid-cols-2 gap-8'>
+        <div className='aspect-square relative bg-gray-100 rounded-lg overflow-hidden'>
+          {product.image ? (
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              className='object-cover'
+            />
+          ) : (
+            <div className='flex items-center justify-center h-full text-gray-400'>
+              <svg className='w-24 h-24' fill='currentColor' viewBox='0 0 20 20'>
+                <path fillRule='evenodd' d='M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z' clipRule='evenodd' />
+              </svg>
+            </div>
+          )}
+        </div>
+
+        <div className='space-y-6'>
+          <div>
+            <h1 className='text-3xl font-bold text-gray-800 mb-2'>
+              {product.name}
+            </h1>
+            <p className='text-3xl font-bold text-blue-600'>
+              ${product.price}
+            </p>
+          </div>
+
+          {product.description && (
+            <div>
+              <h2 className='text-xl font-semibold text-gray-800 mb-2'>Description</h2>
+              <p className='text-gray-600 leading-relaxed'>
+                {product.description}
+              </p>
+            </div>
+          )}
+
+          <div className='flex gap-4'>
+            <Link
+              href={`/admin/edit/${product.id}`}
+              className='bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition-colors'
+            >
+              Edit Product
+            </Link>
+            <button
+              onClick={() => router.back()}
+              className='bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg transition-colors'
+            >
+              Go Back
+            </button>
+          </div>
+
+          {product.createdAt && (
+            <div className='text-sm text-gray-500'>
+              <p>Created: {new Date(product.createdAt).toLocaleDateString()}</p>
+              {product.updatedAt && product.updatedAt !== product.createdAt && (
+                <p>Updated: {new Date(product.updatedAt).toLocaleDateString()}</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

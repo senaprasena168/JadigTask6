@@ -1,45 +1,72 @@
-import { NextResponse } from 'next/server';
-import { getProductById, updateProduct, deleteProduct } from '@/lib/products';
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+import { products } from '@/lib/schema';
+import { eq } from 'drizzle-orm';
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await params;
-  const product = getProductById(id);
+  try {
+    const product = await db.select().from(products).where(eq(products.id, parseInt(params.id)));
+    
+    if (product.length === 0) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
 
-  if (!product) {
-    return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    return NextResponse.json(product[0]);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    return NextResponse.json({ error: 'Failed to fetch product' }, { status: 500 });
   }
-
-  return NextResponse.json(product);
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await params;
-  const body = await request.json();
-  const updatedProduct = updateProduct(id, body);
+  try {
+    const body = await request.json();
+    const { name, price, image, description } = body;
 
-  if (!updatedProduct) {
-    return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    const updatedProduct = await db.update(products)
+      .set({
+        name,
+        price: price.toString(),
+        image,
+        description,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, parseInt(params.id)))
+      .returning();
+
+    if (updatedProduct.length === 0) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updatedProduct[0]);
+  } catch (error) {
+    console.error('Error updating product:', error);
+    return NextResponse.json({ error: 'Failed to update product' }, { status: 500 });
   }
-
-  return NextResponse.json(updatedProduct);
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-  const { id } = await params;
-  const deletedProduct = deleteProduct(id);
+  try {
+    const deletedProduct = await db.delete(products)
+      .where(eq(products.id, parseInt(params.id)))
+      .returning();
 
-  if (!deletedProduct) {
-    return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    if (deletedProduct.length === 0) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    return NextResponse.json({ error: 'Failed to delete product' }, { status: 500 });
   }
-
-  return NextResponse.json({ message: 'Product deleted', product: deletedProduct });
 }

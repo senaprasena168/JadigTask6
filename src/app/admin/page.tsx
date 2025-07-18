@@ -1,421 +1,188 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useAppDispatch, useAppSelector } from '@/lib/hooks';
+import { fetchProducts, deleteProduct } from '@/lib/features/products/productsSlice';
+import clsx from 'clsx';
 
-interface Product {
-  id: string;
-  name: string;
-  price: string;
-  image?: string;
-}
-
-// Fallback images for existing products
-const productDetails = [
-  {
-    id: '1',
-    image: '/products/mic.jpg',
-  },
-  {
-    id: '2',
-    image: '/products/roll.jpg',
-  },
-  {
-    id: '3',
-    image: '/products/tail.jpg',
-  },
-];
-
-export default function Admin() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', image: '' });
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const fetchProducts = async () => {
-    try {
-      const res = await fetch('/api/products');
-      const data = await res.json();
-      setProducts(data);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-    }
-  };
+export default function AdminPage() {
+  const dispatch = useAppDispatch();
+  const { items: products, loading, error } = useAppSelector((state) => state.products);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    dispatch(fetchProducts());
+  }, [dispatch]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file size (1MB = 1024 * 1024 bytes)
-      if (file.size > 1024 * 1024) {
-        alert('Image size must be less than 1MB');
-        // Reset file input to placeholder state
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        setImageFile(null);
-        setImagePreview('');
-        setNewProduct({ ...newProduct, image: '' });
-        return;
-      }
-
-      // Check file type
-      if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
-        // Reset file input to placeholder state
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        setImageFile(null);
-        setImagePreview('');
-        setNewProduct({ ...newProduct, image: '' });
-        return;
-      }
-
-      setImageFile(file);
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setImagePreview(result);
-        setNewProduct({ ...newProduct, image: result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handlePriceChange = (value: string) => {
-    // Remove $ sign and any non-numeric characters except decimal point
-    const numericValue = value.replace(/[^0-9.]/g, '');
-    
-    // Validate it's a valid number
-    if (numericValue === '' || !isNaN(parseFloat(numericValue))) {
-      setNewProduct({ ...newProduct, price: numericValue ? `$${numericValue}` : '' });
-    }
-  };
-
-  const handleEditPriceChange = (value: string) => {
-    // Remove $ sign and any non-numeric characters except decimal point
-    const numericValue = value.replace(/[^0-9.]/g, '');
-    
-    // Validate it's a valid number
-    if (numericValue === '' || !isNaN(parseFloat(numericValue))) {
-      setEditingProduct({ 
-        ...editingProduct!, 
-        price: numericValue ? `$${numericValue}` : '' 
-      });
-    }
-  };
-
-  const clearImage = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    setImageFile(null);
-    setImagePreview('');
-    setNewProduct({ ...newProduct, image: '' });
-  };
-
-  // CREATE
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate all required fields
-    if (!newProduct.name.trim()) {
-      alert('Product name is required');
-      return;
-    }
-    
-    if (!newProduct.price.trim()) {
-      alert('Product price is required');
-      return;
-    }
-    
-    if (!newProduct.image.trim()) {
-      alert('Product image is required');
-      return;
-    }
-    
-    // Validate image file size before submission
-    if (imageFile && imageFile.size > 1024 * 1024) {
-      alert('Cannot create product: Image size must be less than 1MB');
-      return;
-    }
-    
-    try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProduct),
-      });
-      if (res.ok) {
-        setNewProduct({ name: '', price: '', image: '' });
-        setImageFile(null);
-        setImagePreview('');
-        fetchProducts();
-        alert('Product created successfully!');
-      }
-    } catch (error) {
-      console.error('Error creating product:', error);
-      alert('Failed to create product');
-    }
-  };
-
-  // UPDATE
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProduct) return;
-
-    // Validate image file size before submission if there's a new image
-    if (imageFile && imageFile.size > 1024 * 1024) {
-      alert('Cannot update product: Image size must be less than 1MB');
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/products/${editingProduct.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingProduct),
-      });
-      if (res.ok) {
-        setEditingProduct(null);
-        setImageFile(null);
-        setImagePreview('');
-        fetchProducts();
-        alert('Product updated successfully!');
-      }
-    } catch (error) {
-      console.error('Error updating product:', error);
-      alert('Failed to update product');
-    }
-  };
-
-  // DELETE
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this product?')) {
+  const handleDelete = async (id: number) => {
+    if (deleteConfirm === id) {
+      setDeleting(id);
       try {
-        const res = await fetch(`/api/products/${id}`, {
-          method: 'DELETE',
-        });
-        if (res.ok) {
-          fetchProducts();
-          alert('Product deleted successfully!');
-        }
+        await dispatch(deleteProduct(id));
       } catch (error) {
-        console.error('Error deleting product:', error);
-        alert('Failed to delete product');
+        console.error('Failed to delete product:', error);
+      } finally {
+        setDeleting(null);
       }
+      setDeleteConfirm(null);
+    } else {
+      setDeleteConfirm(id);
+      setTimeout(() => setDeleteConfirm(null), 3000);
     }
   };
+
+  if (loading) {
+    return (
+      <div className='container mx-auto px-4 py-8'>
+        <div className='flex justify-center items-center h-64'>
+          <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500'></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen p-4 bg-gray-50">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">Product Management</h1>
+    <div className='container mx-auto px-4 py-8'>
+      <div className='flex justify-between items-center mb-8'>
+        <h1 className='text-3xl font-bold text-gray-800'>Admin Dashboard</h1>
+        <Link
+          href='/admin/add'
+          className='bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition-colors'
+        >
+          Add New Product
+        </Link>
+      </div>
 
-        {/* CREATE FORM */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Add New Product</h2>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <input
-                type="text"
-                placeholder="Product Name"
-                value={newProduct.name}
-                onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                className="border border-gray-300 p-3 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Price (e.g., 99.99)"
-                value={newProduct.price.replace('$', '')}
-                onChange={(e) => handlePriceChange(e.target.value)}
-                className="border border-gray-300 p-3 rounded flex-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Product Image (Max 1MB)
-              </label>
-              <div className="relative">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="border border-gray-300 p-3 rounded w-full focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                {imagePreview && (
-                  <button
-                    type="button"
-                    onClick={clearImage}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-700 text-xl font-bold"
-                    title="Clear image"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-              {imagePreview && (
-                <div className="mt-2">
-                  <img 
-                    src={imagePreview} 
-                    alt="Preview" 
-                    className="w-32 h-32 object-cover rounded border"
-                  />
-                </div>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              className="bg-purple-500 text-white px-6 py-3 rounded hover:bg-purple-600 transition-colors"
-            >
-              Add Product
-            </button>
-          </form>
+      {error && (
+        <div className='bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-6'>
+          <div className='flex items-center gap-2'>
+            <svg className='w-5 h-5' fill='currentColor' viewBox='0 0 20 20'>
+              <path fillRule='evenodd' d='M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z' clipRule='evenodd' />
+            </svg>
+            <span>Unable to load products from server. Showing offline view.</span>
+          </div>
         </div>
+      )}
 
-        {/* PRODUCTS LIST */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <h2 className="text-xl font-semibold p-6 border-b text-gray-800">Current Products</h2>
+      {/* Show empty state when there are no valid products OR when there's an error */}
+      {(products.length === 0 || error || products.every(p => !p.name || p.name === '')) ? (
+        <div className='text-center py-12'>
+          {/* Doge image */}
+          <div className='relative w-48 h-48 md:w-64 md:h-64 mb-6 mx-auto'>
+            <Image
+              src='/not-found/doge.jpg'
+              alt='Sad doge'
+              fill
+              className='object-cover rounded-lg'
+            />
+          </div>
           
-          {products.length === 0 ? (
-            <div className="p-6 text-center text-gray-500">
-              No products available. Add your first product above!
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {products.map((product) => {
-                    const fallbackImage = productDetails.find(d => d.id === product.id)?.image;
-                    const imageSource = product.image || fallbackImage;
-                    
-                    return (
-                      <tr key={product.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {imageSource ? (
-                            <img 
-                              src={imageSource} 
+          <div className='bg-yellow-100 p-6 rounded-lg mb-6 max-w-md mx-auto'>
+            <h2 className='text-xl md:text-2xl font-semibold text-yellow-800 mb-2'>
+              Much Empty. Very Sad. Wow.
+            </h2>
+            <p className='text-gray-700'>
+              Such no products. Very lonely admin panel.
+            </p>
+          </div>
+          
+          <Link
+            href='/admin/add'
+            className='bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg transition-colors inline-flex items-center gap-2'
+          >
+            <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M12 4v16m8-8H4' />
+            </svg>
+            Add First Product
+          </Link>
+        </div>
+      ) : (
+        <div className='bg-white rounded-lg shadow overflow-hidden'>
+          <div className='overflow-x-auto'>
+            <table className='min-w-full divide-y divide-gray-200'>
+              <thead className='bg-gray-50'>
+                <tr>
+                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                    Product
+                  </th>
+                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                    Price
+                  </th>
+                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                    Created
+                  </th>
+                  <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className='bg-white divide-y divide-gray-200'>
+                {products.filter(p => p.name && p.name.trim() !== '').map((product) => (
+                  <tr key={product.id}>
+                    <td className='px-6 py-4 whitespace-nowrap'>
+                      <div className='flex items-center'>
+                        <div className='flex-shrink-0 h-16 w-16'>
+                          {product.image ? (
+                            <Image
+                              src={product.image}
                               alt={product.name}
-                              className="w-16 h-16 object-cover rounded"
+                              width={64}
+                              height={64}
+                              className='h-16 w-16 rounded-lg object-cover'
                             />
                           ) : (
-                            <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
-                              <span className="text-gray-400 text-xs">No Image</span>
+                            <div className='h-16 w-16 bg-gray-200 rounded-lg flex items-center justify-center'>
+                              <svg className='w-8 h-8 text-gray-400' fill='currentColor' viewBox='0 0 20 20'>
+                                <path fillRule='evenodd' d='M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z' clipRule='evenodd' />
+                              </svg>
                             </div>
                           )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {product.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {product.price}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <button
-                            onClick={() => setEditingProduct(product)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(product.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* EDIT MODAL */}
-        {editingProduct && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h3 className="text-lg font-semibold mb-4">Edit Product</h3>
-              <form onSubmit={handleUpdate} className="space-y-4">
-                <input
-                  type="text"
-                  value={editingProduct.name}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                  className="w-full border border-gray-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-                <input
-                  type="text"
-                  value={editingProduct.price.replace('$', '')}
-                  onChange={(e) => handleEditPriceChange(e.target.value)}
-                  className="w-full border border-gray-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  required
-                />
-                <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-purple-500 text-white py-2 rounded hover:bg-purple-600 transition-colors"
-                  >
-                    Update
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingProduct(null)}
-                    className="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 transition-colors"
-                  >
- 
-                   Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
+                        </div>
+                        <div className='ml-4'>
+                          <div className='text-sm font-medium text-gray-900'>{product.name}</div>
+                          {product.description && (
+                            <div className='text-sm text-gray-500 line-clamp-2'>{product.description}</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-900'>
+                      ${product.price}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
+                      {product.createdAt ? new Date(product.createdAt).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className='px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2'>
+                      <Link
+                        href={`/products/${product.id}`}
+                        className='text-blue-600 hover:text-blue-900'
+                      >
+                        View
+                      </Link>
+                      <Link
+                        href={`/admin/edit/${product.id}`}
+                        className='text-indigo-600 hover:text-indigo-900'
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        disabled={deleting === product.id}
+                        className='text-red-600 hover:text-red-900 disabled:opacity-50'
+                      >
+                        {deleting === product.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-    </main>
+        </div>
+      )}
+    </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

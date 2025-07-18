@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import { Providers } from '@/components/Providers';
 
 export const metadata: Metadata = {
-  title: 'Jabar Istimewa Digital Academy Fullstack - Task 2',
-  description: 'A Next.js application with routing and navigation',
+  title: 'Cat Food Store',
+  description: 'A premium cat food store with the best products for your feline friends',
 };
 
 export default function RootLayout({
@@ -15,8 +16,12 @@ export default function RootLayout({
   return (
     <html lang='en'>
       <body className='antialiased'>
-        <Navbar />
-        {children}
+        <Providers>
+          <Navbar />
+          <main className='min-h-screen bg-gray-50'>
+            {children}
+          </main>
+        </Providers>
       </body>
     </html>
   );
