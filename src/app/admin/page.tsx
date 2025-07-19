@@ -10,6 +10,9 @@ export default function AdminPage() {
   const dispatch = useAppDispatch();
   const { products = [], loading, error } = useAppSelector((state) => state.products);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+  const [imageError, setImageError] = useState<string>('');
 
   useEffect(() => {
     dispatch(fetchProducts());
@@ -33,8 +36,71 @@ export default function AdminPage() {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    setImageError('');
+    
+    if (!file) {
+      setImageFile(null);
+      setImagePreview('');
+      return;
+    }
+
+    // Validate file type - only JPG and PNG
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (!allowedTypes.includes(file.type)) {
+      setImageError('Please select a JPG or PNG image file');
+      e.target.value = '';
+      return;
+    }
+
+    // Validate file size - max 1MB
+    const maxSize = 1024 * 1024; // 1MB
+    if (file.size > maxSize) {
+      setImageError('Image size must be less than 1MB');
+      e.target.value = '';
+      return;
+    }
+
+    setImageFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadImage = async (file: File): Promise<{ url: string, imageId: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to upload image');
+    }
+
+    const data = await response.json();
+    return data;
+  };
+
   const handleAddProduct = async (formData: FormData) => {
     try {
+      let imageUrl = formData.get('image') as string;
+      let imageId = null;
+      
+      // Upload image if file is selected
+      if (imageFile) {
+        const uploadResponse = await uploadImage(imageFile);
+        imageUrl = uploadResponse.url;
+        imageId = uploadResponse.imageId;
+      }
+
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: {
@@ -44,12 +110,16 @@ export default function AdminPage() {
           name: formData.get('name'),
           price: formData.get('price'),
           description: formData.get('description'),
-          image: formData.get('image'),
+          image: imageUrl,
+          imageId: imageId,
         }),
       });
 
       if (response.ok) {
         setShowAddForm(false);
+        setImageFile(null);
+        setImagePreview('');
+        setImageError('');
         dispatch(fetchProducts()); // Refresh the list
       } else {
         alert('Failed to add product');
@@ -132,14 +202,50 @@ export default function AdminPage() {
               />
             </div>
             <div>
-              <label className='block text-sm font-medium text-gray-700 mb-1'>
-                Image URL
+              <label className='block text-sm font-medium text-gray-700 mb-2'>
+                Product Image
               </label>
-              <input
-                type='url'
-                name='image'
-                className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-              />
+              
+              {/* File Upload */}
+              <div className='mb-4'>
+                <input
+                  type='file'
+                  accept='image/jpeg,image/jpg,image/png'
+                  onChange={handleImageChange}
+                  className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                />
+                <p className='text-xs text-gray-500 mt-1'>
+                  Image must be in JPG or PNG format with 1MB max size.
+                </p>
+                {imageError && (
+                  <p className='text-red-500 text-sm mt-1'>{imageError}</p>
+                )}
+              </div>
+
+              {/* Image Preview with X button */}
+              {imagePreview && (
+                <div className='mb-4 relative inline-block'>
+                  <img
+                    src={imagePreview}
+                    alt='Preview'
+                    className='w-32 h-32 object-cover border rounded-md'
+                  />
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setImageFile(null);
+                      setImagePreview('');
+                      setImageError('');
+                      // Reset file input
+                      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+                      if (fileInput) fileInput.value = '';
+                    }}
+                    className='absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold'
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
             </div>
             <button
               type='submit'
