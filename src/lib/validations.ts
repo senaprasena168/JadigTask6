@@ -1,10 +1,3 @@
-export interface ProductInput {
-  name: string;
-  price: string;
-  description?: string;
-  image?: string;
-}
-
 export function validateProduct(data: any): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -16,8 +9,17 @@ export function validateProduct(data: any): { isValid: boolean; errors: string[]
     errors.push('Valid price is required');
   }
 
+  // Add price range validation
+  if (data.price && parseFloat(data.price) > 999999.99) {
+    errors.push('Price cannot exceed $999,999.99');
+  }
+
   if (data.name && data.name.length > 255) {
     errors.push('Product name must be less than 255 characters');
+  }
+
+  if (data.description && data.description.length > 1000) {
+    errors.push('Description must be less than 1000 characters');
   }
 
   return {
@@ -25,3 +27,4 @@ export function validateProduct(data: any): { isValid: boolean; errors: string[]
     errors
   };
 }
+

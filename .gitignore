@@ -9,6 +9,9 @@ node_modules
 /test
 test/
 
+# Test files and scripts (may contain secrets)
+tests-and-scripts/
+
 # Next.js
 /.next/
 /out/

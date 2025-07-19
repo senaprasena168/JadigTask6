@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { fetchProducts } from '@/lib/features/products/productsSlice';
+import { validateProduct } from '@/lib/validations';
 import Image from 'next/image';
 import clsx from 'clsx';
 
@@ -13,6 +14,8 @@ export default function AdminPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const [imageError, setImageError] = useState<string>('');
+  const [addingProduct, setAddingProduct] = useState(false);
+  const [formErrors, setFormErrors] = useState<string[]>([]);
 
   useEffect(() => {
     dispatch(fetchProducts());
@@ -90,11 +93,42 @@ export default function AdminPage() {
   };
 
   const handleAddProduct = async (formData: FormData) => {
+    if (addingProduct) return;
+    
+    setAddingProduct(true);
+    setFormErrors([]);
+    
     try {
+      // Validate form data first
+      const productData = {
+        name: formData.get('name') as string,
+        price: formData.get('price') as string,
+        description: formData.get('description') as string,
+      };
+
+      // Inline validation
+      const errors: string[] = [];
+      
+      if (!productData.name || productData.name.trim().length === 0) {
+        errors.push('Product name is required');
+      }
+      
+      if (!productData.price || isNaN(parseFloat(productData.price)) || parseFloat(productData.price) <= 0) {
+        errors.push('Valid price is required');
+      }
+      
+      if (productData.price && parseFloat(productData.price) > 999999.99) {
+        errors.push('Price cannot exceed $999,999.99');
+      }
+
+      if (errors.length > 0) {
+        setFormErrors(errors);
+        return;
+      }
+
       let imageUrl = formData.get('image') as string;
       let imageId = null;
       
-      // Upload image if file is selected
       if (imageFile) {
         const uploadResponse = await uploadImage(imageFile);
         imageUrl = uploadResponse.url;
@@ -107,25 +141,30 @@ export default function AdminPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.get('name'),
-          price: formData.get('price'),
-          description: formData.get('description'),
+          ...productData,
+          price: parseFloat(productData.price),
           image: imageUrl,
           imageId: imageId,
         }),
       });
 
+      const result = await response.json();
+      
       if (response.ok) {
         setShowAddForm(false);
         setImageFile(null);
         setImagePreview('');
         setImageError('');
-        dispatch(fetchProducts()); // Refresh the list
+        setFormErrors([]);
+        dispatch(fetchProducts());
       } else {
-        alert('Failed to add product');
+        setFormErrors([result.error || 'Failed to add product']);
       }
     } catch (error) {
-      alert('Error adding product');
+      console.error('Error adding product:', error);
+      setFormErrors(['Network error. Please try again.']);
+    } finally {
+      setAddingProduct(false);
     }
   };
 
@@ -187,8 +226,11 @@ export default function AdminPage() {
                 type='number'
                 name='price'
                 step='0.01'
+                min='0'
+                max='999999.99'
                 required
                 className='w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
+                placeholder='0.00'
               />
             </div>
             <div>
@@ -249,9 +291,14 @@ export default function AdminPage() {
             </div>
             <button
               type='submit'
-              className='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
+              disabled={addingProduct}
+              className={`px-4 py-2 rounded-md text-white font-medium ${
+                addingProduct 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-500 hover:bg-blue-600'
+              }`}
             >
-              Add Product
+              {addingProduct ? 'Adding...' : 'Add Product'}
             </button>
           </form>
         </div>
@@ -289,20 +336,21 @@ export default function AdminPage() {
                 {products.map((product) => (
                   <tr key={product.id}>
                     <td className='px-6 py-4 whitespace-nowrap'>
-                      <div className='flex items-center'>
-                        <div className='flex-shrink-0 h-10 w-10'>
+                      <div className='flex items-center space-x-3'>
+                        <div className='w-12 h-12 bg-gray-200 rounded-md overflow-hidden flex-shrink-0'>
                           <Image
-                            src={`/api/images/${product.id}`}
+                            src={product.image || `/api/images/${product.id}`}
                             alt={product.name}
-                            width={40}
-                            height={40}
-                            className='h-10 w-10 rounded-full object-cover'
+                            width={48}
+                            height={48}
+                            className='w-full h-full object-cover'
+                            priority={false}
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                           />
                         </div>
-                        <div className='ml-4'>
-                          <div className='text-sm font-medium text-gray-900'>
-                            {product.name}
-                          </div>
+                        <div>
+                          <h3 className='font-medium text-gray-900'>{product.name}</h3>
                         </div>
                       </div>
                     </td>

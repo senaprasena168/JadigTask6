@@ -32,10 +32,10 @@ export default function Navbar() {
                 key={href}
                 href={href}
                 className={clsx(
-                  'px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                  'hover:text-blue-200 hover:bg-blue-700',
+                  'px-3 py-2 text-sm font-medium transition-colors relative',
+                  'hover:text-blue-200',
                   pathname === href 
-                    ? 'text-blue-200 bg-blue-700' 
+                    ? 'text-blue-200 border-b-2 border-blue-200' 
                     : 'text-white'
                 )}
               >

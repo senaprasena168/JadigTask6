@@ -27,7 +27,11 @@ async function addStaticProducts() {
   try {
     const sql = neon(process.env.DATABASE_URL);
     
-    // The 3 products from your static data
+    // Clear existing products first
+    await sql`DELETE FROM products`;
+    console.log('🗑️ Cleared existing products');
+    
+    // The 3 products with static images
     const products = [
       {
         name: 'Professional Microphone',
@@ -69,3 +73,4 @@ async function addStaticProducts() {
 }
 
 addStaticProducts();
+
