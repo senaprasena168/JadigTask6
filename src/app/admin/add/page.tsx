@@ -29,7 +29,7 @@ export default function AddProductPage() {
       return;
     }
 
-    // Validate file type
+    // Validate file type - only JPG and PNG
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
       setImageError('Please select a JPG or PNG image file');
@@ -37,7 +37,7 @@ export default function AddProductPage() {
       return;
     }
 
-    // Validate file size (1MB = 1024 * 1024 bytes)
+    // Validate file size - max 1MB
     const maxSize = 1024 * 1024; // 1MB
     if (file.size > maxSize) {
       setImageError('Image size must be less than 1MB');
@@ -47,6 +47,9 @@ export default function AddProductPage() {
 
     setImageFile(file);
     
+    // Clear URL input when file is selected
+    setFormData(prev => ({ ...prev, image: '' }));
+    
     // Create preview
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -55,7 +58,7 @@ export default function AddProductPage() {
     reader.readAsDataURL(file);
   };
 
-  const uploadImage = async (file: File): Promise<string> => {
+  const uploadImage = async (file: File): Promise<{ url: string, imageId: string }> => {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -69,7 +72,7 @@ export default function AddProductPage() {
     }
 
     const data = await response.json();
-    return data.url;
+    return data;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,15 +81,19 @@ export default function AddProductPage() {
 
     try {
       let imageUrl = formData.image;
+      let imageId = null;
       
       // Upload image if file is selected
       if (imageFile) {
-        imageUrl = await uploadImage(imageFile);
+        const uploadResponse = await uploadImage(imageFile);
+        imageUrl = uploadResponse.url;
+        imageId = uploadResponse.imageId;
       }
 
       await dispatch(addProduct({
         ...formData,
         image: imageUrl,
+        imageId: imageId,
         price: parseFloat(formData.price)
       })).unwrap();
       
@@ -228,4 +235,6 @@ export default function AddProductPage() {
     </div>
   );
 }
+
+
 

@@ -1,98 +1,118 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 export interface Product {
   id: number;
   name: string;
   price: string;
-  image?: string;
   description?: string;
+  image?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 interface ProductsState {
-  items: Product[];
+  products: Product[];
   currentProduct: Product | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: ProductsState = {
-  items: [],
+  products: [],
   currentProduct: null,
   loading: false,
   error: null,
 };
 
-// Async thunks
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/products');
+      const response = await fetch('/api/products', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store'
+      });
+      
+      const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP ${response.status}: ${data.message || data.error || 'Request failed'}`);
       }
       
-      const text = await response.text();
-      
-      if (!text || text.trim() === '') {
-        return [];
+      if (!data.success) {
+        throw new Error(data.error || data.message || 'API returned success: false');
       }
       
-      try {
-        return JSON.parse(text);
-      } catch (parseError) {
-        console.error('JSON parse error:', parseError, 'Raw text:', text);
-        return [];
-      }
+      return data.data || [];
     } catch (error) {
-      console.error('Fetch products error:', error);
-      return rejectWithValue(error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      return rejectWithValue(errorMessage);
     }
   }
 );
 
 export const fetchProduct = createAsyncThunk(
   'products/fetchProduct',
-  async (id: string) => {
-    const response = await fetch(`/api/products/${id}`);
-    return response.json();
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`/api/products/${id}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+    }
   }
 );
 
 export const addProduct = createAsyncThunk(
   'products/addProduct',
-  async (product: Omit<Product, 'id'>) => {
-    const response = await fetch('/api/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(product),
-    });
-    return response.json();
+  async (productData: Omit<Product, 'id'>, { rejectWithValue }) => {
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add product');
+      }
+      
+      return data.data;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+    }
   }
 );
 
 export const updateProduct = createAsyncThunk(
   'products/updateProduct',
-  async ({ id, ...product }: { id: number } & Partial<Product>) => {
-    const response = await fetch(`/api/products/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(product),
-    });
-    return response.json();
-  }
-);
-
-export const deleteProduct = createAsyncThunk(
-  'products/deleteProduct',
-  async (id: number) => {
-    await fetch(`/api/products/${id}`, {
-      method: 'DELETE',
-    });
-    return id;
+  async ({ id, ...productData }: { id: number } & Partial<Product>, { rejectWithValue }) => {
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update product');
+      }
+      
+      return data;
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Unknown error');
+    }
   }
 );
 
@@ -103,45 +123,71 @@ const productsSlice = createSlice({
     clearCurrentProduct: (state) => {
       state.currentProduct = null;
     },
+    clearError: (state) => {
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
       // Fetch products
       .addCase(fetchProducts.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload;
+        state.products = action.payload;
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch products';
+        state.error = action.payload as string;
       })
       // Fetch single product
+      .addCase(fetchProduct.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchProduct.fulfilled, (state, action) => {
+        state.loading = false;
         state.currentProduct = action.payload;
       })
+      .addCase(fetchProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
       // Add product
+      .addCase(addProduct.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(addProduct.fulfilled, (state, action) => {
-        state.items.push(action.payload);
+        state.loading = false;
+        state.products.push(action.payload);
+      })
+      .addCase(addProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       })
       // Update product
-      .addCase(updateProduct.fulfilled, (state, action) => {
-        const index = state.items.findIndex(p => p.id === action.payload.id);
-        if (index !== -1) {
-          state.items[index] = action.payload;
-        }
+      .addCase(updateProduct.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
-      // Delete product
-      .addCase(deleteProduct.fulfilled, (state, action) => {
-        state.items = state.items.filter(p => p.id !== action.payload);
+      .addCase(updateProduct.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.products.findIndex(p => p.id === action.payload.id);
+        if (index !== -1) {
+          state.products[index] = action.payload;
+        }
+        state.currentProduct = action.payload;
+      })
+      .addCase(updateProduct.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });
 
-export const { clearCurrentProduct } = productsSlice.actions;
+export const { clearCurrentProduct, clearError } = productsSlice.actions;
 export default productsSlice.reducer;
-
-
 

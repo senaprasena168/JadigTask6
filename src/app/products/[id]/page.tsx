@@ -65,20 +65,12 @@ export default function ProductDetailPage() {
 
       <div className='grid md:grid-cols-2 gap-8'>
         <div className='aspect-square relative bg-gray-100 rounded-lg overflow-hidden'>
-          {product.image ? (
-            <Image
-              src={product.image}
-              alt={product.name}
-              fill
-              className='object-cover'
-            />
-          ) : (
-            <div className='flex items-center justify-center h-full text-gray-400'>
-              <svg className='w-24 h-24' fill='currentColor' viewBox='0 0 20 20'>
-                <path fillRule='evenodd' d='M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z' clipRule='evenodd' />
-              </svg>
-            </div>
-          )}
+          <Image
+            src={`/api/images/${product.id}`}
+            alt={product.name}
+            fill
+            className='object-cover'
+          />
         </div>
 
         <div className='space-y-6'>

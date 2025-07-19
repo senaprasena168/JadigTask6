@@ -3,12 +3,17 @@ import { db } from '@/lib/db';
 import { products } from '@/lib/schema';
 import { eq } from 'drizzle-orm';
 
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    const product = await db.select().from(products).where(eq(products.id, parseInt(params.id)));
+    const { id } = await params;
+    const product = await db.select().from(products).where(eq(products.id, parseInt(id)));
     
     if (product.length === 0) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
@@ -23,9 +28,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, price, image, description } = body;
 
@@ -37,7 +43,7 @@ export async function PUT(
         description,
         updatedAt: new Date(),
       })
-      .where(eq(products.id, parseInt(params.id)))
+      .where(eq(products.id, parseInt(id)))
       .returning();
 
     if (updatedProduct.length === 0) {
@@ -53,11 +59,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
+    const { id } = await params;
     const deletedProduct = await db.delete(products)
-      .where(eq(products.id, parseInt(params.id)))
+      .where(eq(products.id, parseInt(id)))
       .returning();
 
     if (deletedProduct.length === 0) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { existsSync } from 'fs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Validate file type
+    // Validate file type - only JPG and PNG
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (1MB)
+    // Validate file size - max 1MB
     const maxSize = 1024 * 1024; // 1MB
     if (file.size > maxSize) {
       return NextResponse.json(
@@ -32,17 +33,27 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Create unique filename
+    // Ensure uploads directory exists
+    const uploadsDir = join(process.cwd(), 'public/uploads');
+    if (!existsSync(uploadsDir)) {
+      await mkdir(uploadsDir, { recursive: true });
+    }
+
+    // Create unique filename with proper extension
     const timestamp = Date.now();
-    const filename = `${timestamp}-${file.name}`;
-    const path = join(process.cwd(), 'public/uploads', filename);
+    const fileExtension = file.name.split('.').pop() || 'jpg';
+    const filename = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const path = join(uploadsDir, filename);
 
     // Write file
     await writeFile(path, buffer);
 
     return NextResponse.json({ 
       url: `/uploads/${filename}`,
-      message: 'File uploaded successfully' 
+      message: 'File uploaded successfully',
+      filename: filename,
+      size: file.size,
+      type: file.type
     });
   } catch (error) {
     console.error('Upload error:', error);

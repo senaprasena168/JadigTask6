@@ -13,7 +13,7 @@ export default function AboutPage() {
             </h2>
             <p className='text-gray-600 leading-relaxed'>
               This is a comprehensive cat food management system built as part of the 
-              Jabar Istimewa Digital Academy (JADIG) Fullstack Development program. 
+              Jabar Istimewa Digital Academy (JIDA) Fullstack Development program. 
               The application demonstrates modern web development practices for managing 
               premium cat food products using cutting-edge technologies.
             </p>
