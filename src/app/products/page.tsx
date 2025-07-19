@@ -105,7 +105,7 @@ export default function ProductsPage() {
           >
             <div className='aspect-square relative bg-gray-100'>
               <Image
-                src={product.imageUrl || product.image || `/api/images/${product.id}`}
+                src={product.image_url || product.image || `/api/images/${product.id}`}
                 alt={product.name}
                 fill
                 className='object-cover'

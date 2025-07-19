@@ -5,6 +5,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params; // Add await here
+    
     if (!process.env.DATABASE_URL) {
       return new NextResponse('Database configuration missing', { status: 500 });
     }
@@ -15,17 +17,15 @@ export async function GET(
     const result = await sql`
       SELECT image_data, image_type 
       FROM products 
-      WHERE id = ${params.id}
+      WHERE id = ${id}
     `;
     
     if (result.length === 0) {
-      // Return 404 for missing products instead of serving placeholder
       return new NextResponse('Product not found', { status: 404 });
     }
     
     const { image_data, image_type } = result[0];
     
-    // If product has image data, serve it
     if (image_data) {
       try {
         const imageBuffer = Buffer.from(image_data, 'base64');
@@ -42,7 +42,6 @@ export async function GET(
       }
     }
     
-    // If no image data, return 404 so frontend can handle fallback
     return new NextResponse('No image data', { status: 404 });
     
   } catch (error) {
@@ -50,6 +49,7 @@ export async function GET(
     return new NextResponse('Internal server error', { status: 500 });
   }
 }
+
 
 
 

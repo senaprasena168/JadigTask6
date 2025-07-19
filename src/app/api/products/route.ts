@@ -14,7 +14,7 @@ export async function GET() {
     
     // Select only necessary fields, exclude binary image_data
     const products = await sql`
-      SELECT id, name, price, description, created_at, updated_at,
+      SELECT id, name, price, description, created_at, updated_at, image_url,
              CASE WHEN image_data IS NOT NULL THEN true ELSE false END as has_image
       FROM products 
       ORDER BY created_at DESC

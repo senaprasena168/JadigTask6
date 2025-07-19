@@ -77,19 +77,22 @@ export default function AdminPage() {
 
   const uploadImage = async (file: File): Promise<{ url: string, imageId: string }> => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('image', file);  // Changed from 'file' to 'image'
+    formData.append('productId', '1'); // Add a temporary productId
 
-    const response = await fetch('/api/upload', {
+    const response = await fetch('/api/products/upload-image', {
       method: 'POST',
       body: formData,
     });
 
     if (!response.ok) {
-      throw new Error('Failed to upload image');
+      const errorData = await response.json();
+      console.error('Upload error:', errorData);
+      throw new Error(`Failed to upload image: ${errorData.message}`);
     }
 
     const data = await response.json();
-    return data;
+    return { url: data.imageUrl, imageId: data.imageUrl }; // Return the imageUrl
   };
 
   const handleAddProduct = async (formData: FormData) => {
