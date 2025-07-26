@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppDispatch } from '@/lib/hooks';
 import { addProduct } from '@/lib/features/products/productsSlice';
+import AdminProtection from '@/components/AdminProtection';
 
-export default function AddProductPage() {
+function AddProductPageContent() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
@@ -236,5 +237,10 @@ export default function AddProductPage() {
   );
 }
 
-
-
+export default function AddProductPage() {
+  return (
+    <AdminProtection>
+      <AddProductPageContent />
+    </AdminProtection>
+  );
+}

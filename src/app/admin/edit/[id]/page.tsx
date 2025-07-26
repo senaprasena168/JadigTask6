@@ -5,8 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { fetchProduct, updateProduct, clearCurrentProduct } from '@/lib/features/products/productsSlice';
+import AdminProtection from '@/components/AdminProtection';
 
-export default function EditProductPage() {
+function EditProductPageContent() {
   const params = useParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -184,5 +185,13 @@ export default function EditProductPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function EditProductPage() {
+  return (
+    <AdminProtection>
+      <EditProductPageContent />
+    </AdminProtection>
   );
 }

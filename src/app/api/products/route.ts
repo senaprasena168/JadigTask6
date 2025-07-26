@@ -14,8 +14,7 @@ export async function GET() {
     
     // Select only necessary fields, exclude binary image_data
     const products = await sql`
-      SELECT id, name, price, description, created_at, updated_at, image_url,
-             CASE WHEN image_data IS NOT NULL THEN true ELSE false END as has_image
+      SELECT id, name, price, description, created_at, updated_at, image_url as imageUrl
       FROM products 
       ORDER BY created_at DESC
     `;
@@ -64,14 +63,14 @@ export async function POST(request: NextRequest) {
       // Update the temporary record created during image upload
       newProduct = await sql`
         UPDATE products 
-        SET name = ${name}, price = ${price}, description = ${description || null}
+        SET name = ${name}, price = ${price}, description = ${description || null}, image_url = ${image || null}
         WHERE id = ${imageId}
         RETURNING *
       `;
     } else {
       // Create new product with image URL (for existing images)
       newProduct = await sql`
-        INSERT INTO products (name, price, image, description)
+        INSERT INTO products (name, price, image_url, description)
         VALUES (${name}, ${price}, ${image || null}, ${description || null})
         RETURNING *
       `;

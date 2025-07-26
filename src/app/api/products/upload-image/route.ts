@@ -22,10 +22,12 @@ export async function POST(request: NextRequest) {
       hasFile: !!imageFile
     });
     
-    if (!productId || !imageFile) {
+    if (!imageFile) {
       console.log('❌ Missing required data');
-      return NextResponse.json({ message: 'Product ID and image are required.' }, { status: 400 });
+      return NextResponse.json({ message: 'Image file is required.' }, { status: 400 });
     }
+
+    console.log('✅ Image validation passed');
 
     console.log('✅ Data validation passed');
     
@@ -62,18 +64,21 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ R2 upload successful!');
 
-    // Use your custom domain for public access
-    const imageUrl = `https://aingmeong.shop/${objectKey}`;
+    // Construct proper R2 public URL
+    const imageUrl = `${process.env.CLOUDFLARE_R2_ENDPOINT}/${objectKey}`;
     console.log('🔗 Image URL:', imageUrl);
 
     const { neon } = await import('@neondatabase/serverless');
     const sql = neon(process.env.DATABASE_URL!);
     
-    await sql`
-      UPDATE products 
-      SET image_url = ${imageUrl}, updated_at = NOW()
-      WHERE id = ${parseInt(productId)}
-    `;
+    // Only update database if productId exists (for existing products)
+    if (productId) {
+      await sql`
+        UPDATE products 
+        SET image_url = ${imageUrl}, updated_at = NOW()
+        WHERE id = ${parseInt(productId)}
+      `;
+    }
 
     console.log('✅ Database updated successfully!');
 

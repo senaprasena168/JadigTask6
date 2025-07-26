@@ -6,8 +6,9 @@ import { fetchProducts } from '@/lib/features/products/productsSlice';
 import { validateProduct } from '@/lib/validations';
 import Image from 'next/image';
 import clsx from 'clsx';
+import AdminProtection from '@/components/AdminProtection';
 
-export default function AdminPage() {
+function AdminPageContent() {
   const dispatch = useAppDispatch();
   const { products = [], loading, error } = useAppSelector((state) => state.products);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -77,8 +78,10 @@ export default function AdminPage() {
 
   const uploadImage = async (file: File): Promise<{ url: string, imageId: string }> => {
     const formData = new FormData();
-    formData.append('image', file);  // Changed from 'file' to 'image'
-    formData.append('productId', '1'); // Add a temporary productId
+    formData.append('image', file);
+
+    // For new products, we don't need to specify productId since we're creating a new product
+    // The backend will handle the image upload without needing to update an existing product
 
     const response = await fetch('/api/products/upload-image', {
       method: 'POST',
@@ -379,5 +382,13 @@ export default function AdminPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <AdminProtection>
+      <AdminPageContent />
+    </AdminProtection>
   );
 }
