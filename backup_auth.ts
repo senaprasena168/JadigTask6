@@ -27,7 +27,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           })
 
           if (!existingUser) {
-            // Create new user in database for OAuth users
+            // Create new user in database
             await prisma.user.create({
               data: {
                 name: user.name || 'Google User',
@@ -41,15 +41,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             })
             console.log('✅ New Google user created in database:', user.email)
           } else {
-            // Update existing user to ensure they're verified and admin
-            await prisma.user.update({
-              where: { email: user.email! },
-              data: { 
-                isVerified: true,
-                role: 'admin'
-              }
-            })
-            console.log('✅ Existing user updated for Google auth:', user.email)
+            console.log('✅ Existing Google user found in database:', user.email)
           }
           
           return true

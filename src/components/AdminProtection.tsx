@@ -32,6 +32,7 @@ export default function AdminProtection({ children }: AdminProtectionProps) {
       dispatch(
         loginSuccess({
           username: session.user.name || session.user.email || 'User',
+          email: session.user.email || '',
           role: (session.user as { role?: string }).role || 'admin',
         })
       );
@@ -49,7 +50,7 @@ export default function AdminProtection({ children }: AdminProtectionProps) {
     }
 
     // Check Redux auth state for manual login
-    if (isAuthenticated && user?.role === 'admin') {
+    if (isAuthenticated && user) {
       // User is authenticated via manual login, allow access
       return;
     }
@@ -73,7 +74,7 @@ export default function AdminProtection({ children }: AdminProtectionProps) {
   // Check if user is authenticated (either via NextAuth or manual login)
   const isUserAuthenticated =
     (session?.user && sessionStatus === 'authenticated') ||
-    (isAuthenticated && user?.role === 'admin');
+    (isAuthenticated && user);
 
   if (!isUserAuthenticated) {
     return (

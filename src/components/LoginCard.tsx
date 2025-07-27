@@ -36,6 +36,7 @@ const LoginCard = () => {
         dispatch(
           loginSuccess({
             username: session.user.name || session.user.email || 'User',
+            email: session.user.email || '',
             role: (session.user as { role?: string }).role || 'admin',
           })
         );
@@ -142,6 +143,7 @@ const LoginCard = () => {
         dispatch(
           loginSuccess({
             username: data.user.name,
+            email: data.user.email,
             role: data.user.role,
           })
         );

@@ -4,6 +4,7 @@ interface AuthState {
   isAuthenticated: boolean
   user: {
     username: string
+    email: string
     role: string
   } | null
   loading: boolean
@@ -25,7 +26,7 @@ const authSlice = createSlice({
       state.loading = true
       state.error = null
     },
-    loginSuccess: (state, action: PayloadAction<{ username: string; role: string }>) => {
+    loginSuccess: (state, action: PayloadAction<{ username: string; email: string; role: string }>) => {
       state.loading = false
       state.isAuthenticated = true
       state.user = action.payload

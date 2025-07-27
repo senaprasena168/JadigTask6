@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks';
 import { logout, loginSuccess } from '@/lib/features/auth/authSlice';
 import clsx from 'clsx';
@@ -21,6 +21,7 @@ export default function Navbar() {
       // Direct login without going through login page
       dispatch(loginSuccess({
         username: 'Admin Cat',
+        email: 'admin@catfoodstore.com',
         role: 'admin'
       }));
       router.push('/admin');
@@ -40,8 +41,8 @@ export default function Navbar() {
     { href: '/about', label: 'About' },
     { href: '/profile', label: 'Profile' },
     { href: '/products', label: 'Products' },
-    ...(isAuthenticated && user?.role === 'admin' ? [{ href: '/admin', label: 'Admin' }] : []),
-    ...(!isAuthenticated ? [{ href: '/login', label: 'Login' }] : []),
+    { href: '/admin', label: 'Admin' }, // Always show Admin menu
+    ...(!isAuthenticated && !session ? [{ href: '/login', label: 'Login' }] : []),
   ];
 
   return (
@@ -93,9 +94,10 @@ export default function Navbar() {
           {/* User info and logout */}
           {isAuthenticated && (
             <div className="hidden md:flex items-center space-x-4">
-              <span className="text-sm text-blue-200">
-                Welcome, {user?.username}
-              </span>
+              <div className="text-sm text-blue-200 text-right">
+                <div className="font-medium">{user?.username}</div>
+                <div className="text-xs opacity-80">{user?.email}</div>
+              </div>
               <button
                 onClick={handleLogout}
                 className="bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded text-sm transition-colors"

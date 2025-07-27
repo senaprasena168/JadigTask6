@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const otp = generateOTP();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
-    // Create user
+    // Create user with admin role
     const newUser = await prisma.user.create({
       data: {
         name,
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         otp,
         otpExpiry,
         isVerified: false,
-        role: 'user'
+        role: 'admin'
       }
     });
 
