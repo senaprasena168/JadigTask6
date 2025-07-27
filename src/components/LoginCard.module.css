@@ -22,7 +22,7 @@
 .box:hover {
   /* Keep :hover for pure CSS hover */
   width: 380px;
-  height: 500px;
+  height: 550px;
 }
 
 .box::before {
@@ -254,7 +254,7 @@
 
 .box.hovered .inputContainer, /* Added .hovered */
 .box:hover .inputContainer {
-  height: 400px;
+  height: 450px;
   opacity: 1;
   margin-top: 20px;
 }

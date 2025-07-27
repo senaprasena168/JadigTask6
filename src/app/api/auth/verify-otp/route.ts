@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { users } from '@/lib/schema';
-import { eq, and } from 'drizzle-orm';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,21 +14,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user with matching email and OTP
-    const user = await db.select().from(users).where(
-      and(
-        eq(users.email, email),
-        eq(users.otp, otp)
-      )
-    );
+    const foundUser = await prisma.user.findFirst({
+      where: {
+        email,
+        otp
+      }
+    });
 
-    if (user.length === 0) {
+    if (!foundUser) {
       return NextResponse.json(
         { error: 'Invalid OTP or email' },
         { status: 400 }
       );
     }
-
-    const foundUser = user[0];
 
     // Check if OTP has expired
     if (foundUser.otpExpiry && new Date() > foundUser.otpExpiry) {
@@ -41,14 +37,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user as verified and clear OTP
-    await db.update(users)
-      .set({
+    await prisma.user.update({
+      where: { id: foundUser.id },
+      data: {
         isVerified: true,
         otp: null,
         otpExpiry: null,
         updatedAt: new Date()
-      })
-      .where(eq(users.id, foundUser.id));
+      }
+    });
 
     return NextResponse.json({
       message: 'Account verified successfully',

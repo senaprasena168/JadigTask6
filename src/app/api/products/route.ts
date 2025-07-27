@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    if (!process.env.DATABASE_URL) {
-      return NextResponse.json({
-        success: false,
-        error: 'Database configuration missing'
-      }, { status: 500 });
-    }
-
-    const { neon } = await import('@neondatabase/serverless');
-    const sql = neon(process.env.DATABASE_URL);
-    
-    // Select only necessary fields, exclude binary image_data
-    const products = await sql`
-      SELECT id, name, price, description, created_at, updated_at, image_url as imageUrl
-      FROM products 
-      ORDER BY created_at DESC
-    `;
+    // Get all products with clean data structure
+    const products = await prisma.product.findMany({
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        description: true,
+        imageUrl: true,
+        imageType: true,
+        createdAt: true,
+        updatedAt: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
     
     return NextResponse.json({
       success: true,
@@ -38,54 +39,57 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.DATABASE_URL) {
-      return NextResponse.json({
-        success: false,
-        error: 'Database configuration error'
-      }, { status: 500 });
-    }
-
-    const { neon } = await import('@neondatabase/serverless');
-    const sql = neon(process.env.DATABASE_URL);
     const body = await request.json();
-    const { name, price, image, description, imageId } = body;
+    const { name, price, imageUrl, imageKey, imageType, description, imageId } = body;
 
     if (!name || !price) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
-        error: 'Name and price are required' 
+        error: 'Name and price are required'
       }, { status: 400 });
     }
 
     let newProduct;
     
     if (imageId) {
-      // Update the temporary record created during image upload
-      newProduct = await sql`
-        UPDATE products 
-        SET name = ${name}, price = ${price}, description = ${description || null}, image_url = ${image || null}
-        WHERE id = ${imageId}
-        RETURNING *
-      `;
+      // Update existing product record (created during image upload)
+      newProduct = await prisma.product.update({
+        where: { id: parseInt(imageId) },
+        data: {
+          name,
+          price: parseFloat(price),
+          description: description || null,
+          imageUrl: imageUrl || null,
+          imageKey: imageKey || null,
+          imageType: imageType || null,
+          updatedAt: new Date()
+        }
+      });
     } else {
-      // Create new product with image URL (for existing images)
-      newProduct = await sql`
-        INSERT INTO products (name, price, image_url, description)
-        VALUES (${name}, ${price}, ${image || null}, ${description || null})
-        RETURNING *
-      `;
+      // Create new product
+      newProduct = await prisma.product.create({
+        data: {
+          name,
+          price: parseFloat(price),
+          description: description || null,
+          imageUrl: imageUrl || null,
+          imageKey: imageKey || null,
+          imageType: imageType || null
+        }
+      });
     }
 
     return NextResponse.json({
       success: true,
-      data: newProduct[0],
+      data: newProduct,
       message: 'Product created successfully'
     });
   } catch (error) {
     console.error('POST Error:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to create product'
+      error: 'Failed to create product',
+      message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 }

@@ -127,3 +127,5 @@ public/uploads/*
 
 # Drizzle
 drizzle/
+
+/src/generated/prisma

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { users } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
 
@@ -37,8 +35,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await db.select().from(users).where(eq(users.email, email));
-    if (existingUser.length > 0) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
+    if (existingUser) {
       return NextResponse.json(
         { error: 'User with this email already exists' },
         { status: 409 }
@@ -54,15 +54,17 @@ export async function POST(request: NextRequest) {
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
     // Create user
-    const newUser = await db.insert(users).values({
-      name,
-      email,
-      password: hashedPassword,
-      otp,
-      otpExpiry,
-      isVerified: false,
-      role: 'user'
-    }).returning();
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        otp,
+        otpExpiry,
+        isVerified: false,
+        role: 'user'
+      }
+    });
 
     // Send OTP email
     try {
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
       
       return NextResponse.json({
         message: 'User registered successfully. Please check your email for OTP verification.',
-        userId: newUser[0].id
+        userId: newUser.id
       }, { status: 201 });
 
     } catch (emailError) {
@@ -103,7 +105,7 @@ export async function POST(request: NextRequest) {
       // If email fails, still return success but with a different message
       return NextResponse.json({
         message: 'User registered successfully, but email sending failed. Please contact support.',
-        userId: newUser[0].id,
+        userId: newUser.id,
         emailError: true
       }, { status: 201 });
     }

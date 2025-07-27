@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { users } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
@@ -17,16 +15,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email
-    const user = await db.select().from(users).where(eq(users.email, email));
+    const foundUser = await prisma.user.findUnique({
+      where: { email }
+    });
 
-    if (user.length === 0) {
+    if (!foundUser) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
-
-    const foundUser = user[0];
 
     // Check if user is verified
     if (!foundUser.isVerified) {
