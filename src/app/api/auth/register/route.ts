@@ -17,6 +17,9 @@ function createTransporter() {
     auth: {
       user: 'aingmeongshop@gmail.com',
       pass: process.env.EMAIL_APP_PASSWORD || 'placeholder-password' // Will be replaced with actual app password
+    },
+    tls: {
+      rejectUnauthorized: false
     }
   });
 }
