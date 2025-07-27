@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, decimal, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, decimal, timestamp, boolean } from 'drizzle-orm/pg-core';
 
 export const products = pgTable('products', {
   id: serial('id').primaryKey(),
@@ -13,8 +13,23 @@ export const products = pgTable('products', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  password: varchar('password', { length: 255 }).notNull(),
+  isVerified: boolean('is_verified').default(false),
+  otp: varchar('otp', { length: 6 }),
+  otpExpiry: timestamp('otp_expiry'),
+  role: varchar('role', { length: 50 }).default('user'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 export type Product = typeof products.$inferSelect;
 export type NewProduct = typeof products.$inferInsert;
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
 
 
 
