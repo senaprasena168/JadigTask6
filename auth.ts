@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   debug: true, // Enable debug mode
+  secret: process.env.AUTH_SECRET,
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
@@ -28,7 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           if (!existingUser) {
             // Create new user in database for OAuth users
-            await prisma.user.create({
+            const newUser = await prisma.user.create({
               data: {
                 name: user.name || 'Google User',
                 email: user.email!,
@@ -39,17 +40,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 otpExpiry: null
               }
             })
-            console.log('✅ New Google user created in database:', user.email)
+            console.log('✅ New Google user created in database:', user.email, 'ID:', newUser.id)
           } else {
             // Update existing user to ensure they're verified and admin
-            await prisma.user.update({
+            const updatedUser = await prisma.user.update({
               where: { email: user.email! },
-              data: { 
+              data: {
                 isVerified: true,
-                role: 'admin'
+                role: 'admin',
+                name: user.name || existingUser.name // Update name if provided
               }
             })
-            console.log('✅ Existing user updated for Google auth:', user.email)
+            console.log('✅ Existing user updated for Google auth:', user.email, 'ID:', updatedUser.id)
           }
           
           return true

@@ -5,17 +5,27 @@ import { auth } from './auth'
 export async function middleware(request: NextRequest) {
   console.log('🔥 Middleware triggered for:', request.nextUrl.pathname)
   
+  // Skip middleware for NextAuth API routes to prevent conflicts
+  if (request.nextUrl.pathname.startsWith('/api/auth/')) {
+    console.log('🔄 Skipping middleware for NextAuth API route')
+    return NextResponse.next()
+  }
+  
   // Check if the request is for an admin route
   if (request.nextUrl.pathname.startsWith('/admin')) {
     console.log('🔒 Admin route detected, checking authentication...')
     
-    // First check NextAuth.js session
-    const session = await auth()
-    console.log('🔐 NextAuth session:', !!session, session?.user?.email)
-    
-    if (session?.user) {
-      console.log('✅ NextAuth user authenticated, allowing access')
-      return NextResponse.next()
+    try {
+      // First check NextAuth.js session
+      const session = await auth()
+      console.log('🔐 NextAuth session:', !!session, session?.user?.email)
+      
+      if (session?.user) {
+        console.log('✅ NextAuth user authenticated, allowing access')
+        return NextResponse.next()
+      }
+    } catch (error) {
+      console.warn('⚠️ NextAuth session check failed:', error)
     }
     
     // Fallback: Check custom auth cookie for email/password login
@@ -26,7 +36,7 @@ export async function middleware(request: NextRequest) {
       try {
         // Parse the auth cookie to verify authentication
         const authData = JSON.parse(authCookie.value)
-        console.log('📋 Custom auth data:', authData)
+        console.log('📋 Custom auth data:', { isAuthenticated: authData.isAuthenticated, role: authData.user?.role })
         
         // Check if user is authenticated and has admin role
         if (authData.isAuthenticated && authData.user?.role === 'admin') {
